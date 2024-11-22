@@ -1,7 +1,7 @@
 <template>
     <div class="qipan">
         <div v-for="row in boards" flex="~">
-            <div v-for="board in row" :class="boardClass(board)" class="gezi" @click="playerFall(board.x,board.y)">
+            <div v-for="board in row" :class="boardClass(board)" class="gezi" @click="playerFall(board.x, board.y)">
             </div>
         </div>
     </div>
@@ -9,22 +9,26 @@
 
 <script setup lang='ts'>
 import { ref } from 'vue'
-import useGame from '../composables/useGame';
-interface Board {
-    state: 0 | 1 | 2,
-    x: number,
-    y: number
+
+import { Board } from '../types/type';
+type GameInfo = {
+    boards: Board[][],
+    playerFall: (x: number, y: number) => void,
+    isOver: boolean,
+    role: 1 | 2,
+    curRole: 1 | 2
 }
-
-
-const Height = 15
-const Width = 15
-const { curRole, refRole:role, curFootNum, boards, isOver, repentance, playerFall } = useGame(Width, Height, 1)
+interface Props{
+    gameInfo:GameInfo
+}
+const props = defineProps<Props>()
+const {boards,isOver,role,curRole,playerFall}=props.gameInfo
+//
 const boardClass = (board: Board) => {
     if (board.state === 1) return 'heiqi'
     else if(board.state === 2) return 'baiqi'
-    else if (!isOver.value&&curRole.value == role.value) {
-        if (role.value == 1) return 'blank_hover_black'
+    else if (!props.gameInfo.isOver&&props.gameInfo.curRole == props.gameInfo.role) {
+        if (props.gameInfo.role == 1) return 'blank_hover_black'
         return 'blank_hover_white'
     } 
     return ''
@@ -39,7 +43,7 @@ const boardClass = (board: Board) => {
     border-radius: 3px;
     padding-left: 3px;
     padding-top: 3px;
-
+    box-shadow: 1px -1px 1px #777;
     .gezi {
         width: 35px;
         height: 35px;

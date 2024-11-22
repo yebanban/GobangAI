@@ -1,7 +1,7 @@
 import { MersenneTwister19937, Random } from "random-js"
 import { ref } from "vue"
 
-const useZobrist=(width: number, height: number)=>{
+const useZobrist = (width: number, height: number) => {
     const random = new Random(MersenneTwister19937.autoSeed())
     const randoms = Array.from({ length: height }, () =>
         Array.from({ length: width }, () => (
@@ -12,10 +12,14 @@ const useZobrist=(width: number, height: number)=>{
             ]
         ))
     )
-    const zobrist = ref(randoms.reduce((pre, cur) => pre ^ cur.reduce((p, c) => p ^ c[0], 0), 0))
-    const zobristFall = (x: number, y: number, state:0|1|2)=>{
-        zobrist.value^=randoms[x][y][state]
+    const zobrist = ref(0)
+    const zobristReset = () => {
+        zobrist.value = randoms.reduce((pre, cur) => pre ^ cur.reduce((p, c) => p ^ c[0], 0), 0)
     }
-    return {zobrist,zobristFall}
+    zobristReset()
+    const zobristFall = (x: number, y: number, state: 0 | 1 | 2) => {
+        zobrist.value ^= randoms[x][y][state]
+    }
+    return { zobrist, zobristFall, zobristReset }
 }
 export default useZobrist
