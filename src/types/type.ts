@@ -1,7 +1,8 @@
 interface Board {
     state: 0 | 1 | 2,
     x: number,
-    y: number
+    y: number,
+    highLight: boolean
 }
 interface Foot {
     x: number,
@@ -9,4 +10,14 @@ interface Foot {
     role: 1 | 2,
     footNum: number
 }
-export type{Board,Foot}
+interface Score {
+    score: number,
+    step: number
+}
+interface ScoreArrayModifyTheRecord {
+    x: number,
+    y: number,
+    oldScore: number,
+    newScore: number
+}
+export type { Board, Foot, Score,ScoreArrayModifyTheRecord }

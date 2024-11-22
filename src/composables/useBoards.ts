@@ -9,7 +9,8 @@ const useBoards = (width: number, height: number) => {
             Array.from({ length: width }, (_, y) => ({
                 state: 0,
                 x,
-                y
+                y,
+                highLight: false
             }))
         ))
 
@@ -17,12 +18,19 @@ const useBoards = (width: number, height: number) => {
         for (let i = 0; i < height; i++) {
             for (let j = 0; j < width; j++) {
                 boards.value[i][j].state = 0
+                boards.value[i][j].highLight = false
             }
         }
         zobristReset()
     }
     const fall = (x: number, y: number, state: 1 | 2) => {
+        for (let i = 0; i < height; i++) {
+            for (let j = 0; j < width; j++) {
+                boards.value[i][j].highLight = false
+            }
+        }
         boards.value[x][y].state = state
+        boards.value[x][y].highLight = true
         zobristFall(x, y, state)
     }
     const remove = (x: number, y: number) => {

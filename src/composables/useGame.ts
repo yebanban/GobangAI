@@ -7,7 +7,7 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
     const refRole = ref(role)
     const { boards, fall, remove, zobrist, boardsReset } = useBoards(width, height)
     const { curRole, curFootNum, repentance, pushStack, roundConversion, roundReset } = useRound(refRole.value, remove)
-    const { aiGo } = useAI(width, height, boards.value, zobrist.value, refRole.value == 1 ? 2 : 1)
+    const { aiGo, aiReset } = useAI(width, height, boards.value, zobrist.value, refRole.value == 1 ? 2 : 1)
     const gameOver = (winer: 1 | 2) => {
         isOver.value = true
         if (winer == refRole.value) {
@@ -68,6 +68,7 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
         refRole.value = r
         boardsReset()
         roundReset(r)
+        aiReset(r == 1 ? 2 : 1)
         if (r == 2) {
             aiFall()
         }
