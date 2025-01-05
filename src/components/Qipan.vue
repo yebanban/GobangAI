@@ -35,7 +35,7 @@ const boardClass = (board: Board) => {
 
 <style lang='scss' scoped>
 .qipan {
-    background-image: url('./qipan.jpg');
+    background-image: url('/qipan.jpg');
     width: 532px;
     height: 532px;
     border-radius: 3px;
@@ -54,21 +54,21 @@ const boardClass = (board: Board) => {
 }
 
 .heiqi {
-    background-image: url('./heiqi.png');
+    background-image: url('/heiqi.png');
 }
 
 .baiqi {
-    background-image: url('./baiqi.png');
+    background-image: url('/baiqi.png');
 }
 
 .blank_hover_black:hover {
     cursor: pointer;
-    background-image: url('./heiqi.png');
+    background-image: url('/heiqi.png');
 }
 
 .blank_hover_white:hover {
     cursor: pointer;
-    background-image: url('./baiqi.png');
+    background-image: url('/baiqi.png');
 }
 .highLight::before{
     content:'';

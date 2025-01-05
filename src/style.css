@@ -6,7 +6,7 @@ html,body{
   height: 100%;
 }
 body{
-  background-image: url('./muwen.png');
+  background-image: url('/muwen.png');
 }
 #app{
   display:flex;

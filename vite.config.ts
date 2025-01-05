@@ -4,7 +4,7 @@ import Unocss from 'unocss/vite'
 import { presetUno, presetAttributify, presetIcons } from 'unocss'
 // https://vite.dev/config/
 export default defineConfig({
-  base: "./",
+  base: '/novelWeb/',
   plugins: [
     vue(),
     Unocss({
