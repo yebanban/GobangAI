@@ -32,6 +32,10 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
 
     }
     const aiFall = () => {
+        if (curFootNum.value == 1) {
+            roleFall(7, 7, refRole.value == 1 ? 2 : 1)
+            return
+        }
         const [x, y] = aiGo()
         roleFall(x, y, refRole.value == 1 ? 2 : 1)
     }

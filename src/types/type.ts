@@ -9,14 +9,14 @@ interface Foot {
     y: number,
     role: 1 | 2
 }
-interface Score {
-    score: number,
-    step: number
-}
-interface ScoreArrayModifyTheRecord {
+interface MinMaxNode {
     x: number,
     y: number,
-    oldScore: number,
-    newScore: number
+    score: number,
+    depth: number
 }
-export type { Board, Foot, Score,ScoreArrayModifyTheRecord }
+interface Score {
+    score: number,
+    depth: number
+}
+export type { Board, Foot, Score, MinMaxNode }
