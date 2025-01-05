@@ -8,8 +8,6 @@
 </template>
 
 <script setup lang='ts'>
-import { ref } from 'vue'
-
 import { Board } from '../types/type';
 type GameInfo = {
     boards: Board[][],

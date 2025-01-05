@@ -2,7 +2,7 @@ import { Ref } from "vue";
 import { Board, MinMaxNode, Score } from "../types/type";
 const MAX = 10 ** 9
 const MIN = -(10 ** 9)
-
+//如果自己或对手的上一步形成了冲四和活三以上的棋型，则只考虑这一步点位的周围位置，否则考虑所有可落点位置。
 const useAI = (
     width: number, height: number, boards: Ref<Board[][]>,
     zobrist: Ref<number>, playRole: Ref<1 | 2>,
@@ -179,7 +179,7 @@ const useAI = (
         let allCanFall = getAllCanFall().map(([x, y]) => ({ x, y, score: 0 }))
 
         //计算当前走一步的得分，并排序，max层按得分高到低，min层按低到高，这样剪枝的可能性会更大
-        if (depth > 1) {
+        if (depth > 1) { //如果已经走到最后一步，则不需要排序
             for (const position of allCanFall) {
                 fall(position.x, position.y, player)
                 const [row, col, dia, antiDia] = evaluationPosition(position.x, position.y)
