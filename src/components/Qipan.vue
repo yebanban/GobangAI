@@ -49,6 +49,7 @@ const boardClass = (board: Board) => {
         width: 35px;
         height: 35px;
         display: flex;
+        position: relative;
         align-items: center;
         justify-content: center;
     }
@@ -71,13 +72,21 @@ const boardClass = (board: Board) => {
     cursor: pointer;
     background-image: url('./baiqi.png');
 }
+.highLight::before{
+    content:'';
+    background: red;
+    width: 3px;
+    height: 13px;
+    //border-radius: 50%;
+    z-index: 999;
+}
 .highLight::after{
     content:'';
     position:absolute;
     background: red;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+    width: 13px;
+    height: 3px;
+    //border-radius: 50%;
     z-index: 999;
 }
 </style>

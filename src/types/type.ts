@@ -7,8 +7,7 @@ interface Board {
 interface Foot {
     x: number,
     y: number,
-    role: 1 | 2,
-    footNum: number
+    role: 1 | 2
 }
 interface Score {
     score: number,

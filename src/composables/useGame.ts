@@ -2,12 +2,13 @@ import { ref } from "vue"
 import useBoards from "./useBoards"
 import useRound from "./useRound"
 import useAI from "./useAI"
+//接下来的工作需要将zobrist和每个点得分评价的初始化操作放到useAi中，在每次ai执棋时进行初始化
 const useGame = (width: number, height: number, role: 1 | 2) => {
     const isOver = ref(false)
     const refRole = ref(role)
-    const { boards, fall, remove, zobrist, boardsReset } = useBoards(width, height)
-    const { curRole, curFootNum, repentance, pushStack, roundConversion, roundReset } = useRound(refRole.value, remove)
-    const { aiGo, aiReset } = useAI(width, height, boards.value, zobrist.value, refRole.value == 1 ? 2 : 1)
+    const { boards, zobrist, fall, boardsReset, undo } = useBoards(width, height, refRole)
+    const { curRole, curFootNum, roundConversion, roundBack, roundReset } = useRound()
+    const { aiGo } = useAI(width, height, boards, zobrist, refRole,fall,undo)
     const gameOver = (winer: 1 | 2) => {
         isOver.value = true
         if (winer == refRole.value) {
@@ -22,7 +23,6 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
     }
     const roleFall = (x: number, y: number, r: 1 | 2) => {
         fall(x, y, r)
-        pushStack(x, y, r, curFootNum.value)
         if (isWin(x, y, r)) {
             gameOver(r)
             return false
@@ -36,11 +36,10 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
         roleFall(x, y, refRole.value == 1 ? 2 : 1)
     }
     const playerFall = (x: number, y: number) => {
-        if (boards.value[x][y].state !== 0) return
+        if (boards.value[x][y].state !== 0 || curRole.value !== refRole.value || isOver.value) return
         if (roleFall(x, y, refRole.value)) {
-            aiFall()
+            setTimeout(aiFall)
         }
-        console.log(boards.value[x][y].state)
     }
     const isWin = (x: number, y: number, r: 1 | 2) => {
         const direction = [[0, 1], [1, 0], [1, 1], [-1, 1]]
@@ -67,11 +66,17 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
         isOver.value = false
         refRole.value = r
         boardsReset()
-        roundReset(r)
-        aiReset(r == 1 ? 2 : 1)
+        roundReset()
         if (r == 2) {
             aiFall()
         }
+    }
+    const repentance = () => {
+        if (curFootNum.value <= 2) return
+        undo()
+        roundBack()
+        undo()
+        roundBack()
     }
     return { curRole, refRole, curFootNum, boards, isOver, repentance, playerFall, gameReset }
 }
