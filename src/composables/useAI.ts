@@ -1,8 +1,24 @@
 import { Ref } from "vue";
 import { Board, MinMaxNode, Score } from "../types/type";
-const MAX = 10 ** 9
-const MIN = -(10 ** 9)
+import { CHESS_TYPE, MAX, MIN } from "../common/constant";
+import { ACAutomaton } from "../common/utils";
+
 //如果自己或对手的上一步形成了冲四和活三以上的棋型，则只考虑这一步点位的周围位置，否则考虑所有可落点位置。
+//获取可落子点时需要判断这个点是在进攻还是防守（同时进攻与防守的话，记为防守）判断方法：每次遍历到棋型后，得到棋型起点下标与棋型长度，如果这个点在棋型内
+//根据棋型得分正负与该点的字符判断出是进攻或防守
+//1.如果对手的上一步形成了活三，那么可落子点要么是防守并使得分增加（活三-冲三）以上，要么是进攻并使得分增加（冲四-冲三）（比活三-冲三得分要更高）以上
+//2.如果对手的上一步形成了冲四，那么可落子点要么是防守并使得分增加冲四以上，要么是进攻并使得分增加（五-活四）以上
+//3.如果对手的上一步形成了活四，那么可落子点要么是防守并使得分增加（活四-冲四）以上，要么是进攻并使得分增加（五-冲四）以上
+//4.如果自己的上一步形成了活三，那么可落子点要么是防守并使得分增加冲四以上，要么是进攻并使得分增加（活四-活三）以上
+//5.如果自己的上一步形成了冲四以上，只考虑得分增加（五-活四）以上
+//满足14，只考虑4
+//满足24，只考虑2
+//满足34，只考虑3
+//满足5，只考虑5
+//新增一个判断函数，在每次递归搜索时都要判断自己与对手的上一步棋的周围是否形成活三冲四活四。
+//方法：在ac自动机上的节点的score属性上新增一个棋型属性，判断函数使用ac自动机搜索时，只看自己的棋子棋型，不看对手的。
+
+
 const useAI = (
     width: number, height: number, boards: Ref<Board[][]>,
     zobrist: Ref<number>, playRole: Ref<1 | 2>,
@@ -11,64 +27,23 @@ const useAI = (
 ) => {
     const zobristHash = new Map<number, Score>()
     const direction = [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]]
+
+    const ac = new ACAutomaton(CHESS_TYPE)
+    ac.buildQuickFail(['0', '1', '2', '_'])
     let score = 0
     const rowScore = new Array<number>(height).fill(0)
     const colScore = new Array<number>(width).fill(0)
     const diagonals = new Array<number>(width + height - 1).fill(0)
     const antiDiagonals = new Array<number>(width + height - 1).fill(0)
     let cnt = 0
+    let pre = 0
+    let cur = 0
+    
     const calculate = (str: string) => {
-        let result = 0
-        let flag = false
-        let blocked = 1
-        let number = 0
-        for (let i = 0; i < str.length; i++) {
-            cnt++
-            if (str[i] == '1') {
-                if (!flag) {
-                    if (str[i - 1] != '0') {
-                        blocked = 0.1
-                    }
-                    flag = true
-                }
-                number++
-                if(number==5) return MAX
-            } else {
-                if (flag) {
-                    if (str[i] != '0') {
-                        blocked = blocked == 1 ? 0.1 : 0
-                    }
-                    result += Math.floor(10 ** (number - 1) * blocked)
-
-                    flag = false
-                    blocked = 1
-                    number = 0
-                }
-            }
-        }
-        for (let i = 0; i < str.length; i++) {
-            cnt++
-            if (str[i] == '2') {
-                if (!flag) {
-                    if (str[i - 1] != '0') {
-                        blocked = 0.1
-                    }
-                    flag = true
-                }
-                number++
-                if(number==5) return MIN
-            } else {
-                if (flag) {
-                    if (str[i] != '0') {
-                        blocked = blocked == 1 ? 0.1 : 0
-                    }
-                    result -= Math.floor(10 ** (number - 1) * blocked)
-                    flag = false
-                    blocked = 1
-                    number = 0
-                }
-            }
-        }
+        let result=0
+        ac.quickQuery(str, (score: number) => {
+            result+=score
+        })
         return result
     }
     const getRowScore = (row: number) => {
@@ -133,6 +108,7 @@ const useAI = (
     }
 
     const getAllCanFall = () => {
+        //为了提高决策树最后一层的效率，该方法需要优化，优化方式：用Set存储可落子位置，每次落子后，都将落子位置从Set中删除，并把周围的16个点加入Set中
         let positions = []
         for (let i = 0; i < height; i++) {
             for (let j = 0; j < width; j++) {
@@ -177,9 +153,9 @@ const useAI = (
         }
         //获取可下点位
         let allCanFall = getAllCanFall().map(([x, y]) => ({ x, y, score: 0 }))
-
+        pre += allCanFall.length
         //计算当前走一步的得分，并排序，max层按得分高到低，min层按低到高，这样剪枝的可能性会更大
-        if (depth > 1) { //如果已经走到最后一步，则不需要排序
+        if (depth > 1) { //如果已经走到最后一步，则不需要计算并排序，因为计算成本过大，大于剪枝的优化
             for (const position of allCanFall) {
                 fall(position.x, position.y, player)
                 const [row, col, dia, antiDia] = evaluationPosition(position.x, position.y)
@@ -190,10 +166,18 @@ const useAI = (
                     - antiDiagonals[position.x - position.y + width - 1]
                 undo()
             }
+            if (score * (isMax ? -1 : 1) > 900) {
+                allCanFall = allCanFall.filter(position => position.score * ((isMax ? 1 : -1)) >= 1000)
+            }else if (score * (isMax ? -1 : 1) > 90) {
+                allCanFall = allCanFall.filter(position => position.score * ((isMax ? 1 : -1)) >= 100)
+            }
             allCanFall.sort((a, b) => isMax ? b.score - a.score : a.score - b.score)
             allCanFall = allCanFall.slice(0, 30)
-        }
 
+        }
+        cur += allCanFall.length
+        if (depth == 4)
+            console.log(allCanFall)
         if (isMax) {
             const maxNode = { x: 7, y: 7, score: MIN, depth }
             for (const position of allCanFall) {
@@ -216,7 +200,7 @@ const useAI = (
                     maxNode.score = node.score
                     alpha = maxNode.score
                 }
-                if (node.score >= beta) {
+                if (alpha >= beta) {
                     break
                 }
             }
@@ -243,16 +227,23 @@ const useAI = (
                 minNode.score = node.score
                 beta = minNode.score
             }
-            if (node.score <= alpha) {
+            if (beta <= alpha) {
                 break
             }
         }
         return minNode
     }
     const aiGo = () => {
+        const startTime = performance.now()
         getScore()
         cnt = 0
+        pre = 0
+        cur = 0
+        console.log(score)
         const maxNode = minimax(4, MIN, MAX, playRole.value == 1 ? 2 : 1)
+        console.log(`pre=${pre},cur=${cur}`)
+        const endTime = performance.now();
+        console.log(endTime - startTime + 'ms')
         console.log(cnt)
         console.log(maxNode.score)
         console.log(zobristHash)

@@ -19,4 +19,8 @@ interface Score {
     score: number,
     depth: number
 }
-export type { Board, Foot, Score, MinMaxNode }
+interface Word {
+    str: string,
+    score: number
+}
+export type { Board, Foot, Score, MinMaxNode, Word }
