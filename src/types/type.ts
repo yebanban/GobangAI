@@ -1,3 +1,5 @@
+import { CHESS } from "../common/constant"
+
 interface Board {
     state: 0 | 1 | 2,
     x: number,
@@ -13,14 +15,13 @@ interface MinMaxNode {
     x: number,
     y: number,
     score: number,
-    depth: number
 }
 interface Score {
-    score: number,
-    depth: number
+    [key:number]: number,
 }
 interface Word {
     str: string,
-    score: number
+    score: CHESS
 }
+
 export type { Board, Foot, Score, MinMaxNode, Word }

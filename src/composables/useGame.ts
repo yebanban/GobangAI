@@ -6,9 +6,9 @@ import useAI from "./useAI"
 const useGame = (width: number, height: number, role: 1 | 2) => {
     const isOver = ref(false)
     const refRole = ref(role)
-    const { boards, zobrist, fall, boardsReset, undo } = useBoards(width, height, refRole)
+    const { boards, zobrist, fall, boardsReset, undo, getStackTop, getStackSecond } = useBoards(width, height, refRole)
     const { curRole, curFootNum, roundConversion, roundBack, roundReset } = useRound()
-    const { aiGo } = useAI(width, height, boards, zobrist, refRole,fall,undo)
+    const { aiGo } = useAI(width, height, boards, zobrist, refRole, curFootNum, fall, undo, getStackTop, getStackSecond)
     const gameOver = (winer: 1 | 2) => {
         isOver.value = true
         if (winer == refRole.value) {
@@ -22,7 +22,7 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
         }
     }
     const roleFall = (x: number, y: number, r: 1 | 2) => {
-        fall(x, y, r)
+        fall(x, y, r, true)
         if (isWin(x, y, r)) {
             gameOver(r)
             return false
@@ -34,6 +34,11 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
     const aiFall = () => {
         if (curFootNum.value == 1) {
             roleFall(7, 7, refRole.value == 1 ? 2 : 1)
+            return
+        }
+        if (curFootNum.value == 2) {
+            const position = getStackTop()!
+            roleFall(position.x - 1, position.y - 1, refRole.value == 1 ? 2 : 1)
             return
         }
         const [x, y] = aiGo()

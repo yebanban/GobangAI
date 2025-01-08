@@ -23,14 +23,16 @@ const useBoards = (width: number, height: number, role: Ref<1 | 2>) => {
         zobristReset()
         clearStack()
     }
-    const fall = (x: number, y: number, state: 1 | 2) => {
-        for (let i = 0; i < height; i++) {
-            for (let j = 0; j < width; j++) {
-                boards.value[i][j].highLight = false
+    const fall = (x: number, y: number, state: 1 | 2, isSetHighLight = false) => {
+        if (isSetHighLight) {
+            for (let i = 0; i < height; i++) {
+                for (let j = 0; j < width; j++) {
+                    boards.value[i][j].highLight = false
+                }
             }
+            setHighLight(x, y, true)
         }
         boards.value[x][y].state = state
-        setHighLight(x, y, true)
         zobristFall(x, y, state == role.value ? 2 : 1)
         pushStack(x, y, state)
     }
@@ -58,6 +60,12 @@ const useBoards = (width: number, height: number, role: Ref<1 | 2>) => {
             setHighLight(top.x, top.y, true)
         }
     }
-    return { boards, zobrist, fall, boardsReset, undo }
+    const getStackTop = () => {
+        return stack.value.length >= 1 ? stack.value[stack.value.length - 1] : undefined
+    }
+    const getStackSecond = () => {
+        return stack.value.length >= 2 ? stack.value[stack.value.length - 2] : undefined
+    }
+    return { boards, zobrist, fall, boardsReset, undo, getStackTop, getStackSecond }
 }
 export default useBoards

@@ -1,9 +1,10 @@
 import { Word } from "../types/type"
+import { CHESS } from "./constant"
 
 class ACTrieNode {
     next: { [key: string]: ACTrieNode } = {}
     fail: ACTrieNode | null = null
-    score?: number
+    score: CHESS = CHESS.NULL
 }
 
 export class ACAutomaton {
@@ -59,29 +60,32 @@ export class ACAutomaton {
             }
         }
     }
-    query(target: string, todo: (score: number) => unknown) {
+    query(target: string, todo: (score: CHESS) => unknown) {
         const n = target.length
         let cur = this.root
         for (let i = 0; i < n; i++) {
             const s = target[i]
             while (cur.fail && !cur.next[s]) {
                 cur = cur.fail
+                if (cur.score > 0) {
+                    todo(cur.score)
+                }
             }
             if (cur.next[s]) {
                 cur = cur.next[s]
-                if (cur.score !== undefined) {
+                if (cur.score > 0) {
                     todo(cur.score)
                 }
             }
         }
     }
-    quickQuery(target: string, todo: (score: number) => unknown) {
+    quickQuery(target: string, todo: (score: CHESS) => unknown) {
         const n = target.length
         let cur = this.root
         for (let i = 0; i < n; i++) {
             const s = target[i]
             cur = cur.next[s]
-            if (cur.score !== undefined) {
+            if (cur.score > 0) {
                 todo(cur.score)
             }
         }
