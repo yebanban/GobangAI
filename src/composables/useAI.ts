@@ -46,10 +46,6 @@ const useAI = (
     let cnt = 0
     let pre = 0
     let cur = 0
-    console.log(ac)
-    ac.query('201110_', (score: CHESS) => {
-        console.log(score)
-    })
 
     const calculate = (str: string, isAI: boolean) => {
         cnt++
@@ -259,7 +255,7 @@ const useAI = (
                     return bestNode
                 }
             }
-            allCanFall = allCanFall.slice(0, 30)
+            allCanFall = allCanFall.slice(0, 25)
         }
         cur += allCanFall.length
         if (isMax) {
