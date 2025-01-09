@@ -1,7 +1,8 @@
-import { Ref } from "vue";
-import { Board, Foot, MinMaxNode, Score } from "../types/type";
+import { Board, Foot, MinMaxNode, MyBoard, Score } from "../types/type";
 import { CHESS, CHESS_TYPE, MAX, MIN } from "../common/constant";
 import { ACAutomaton } from "../common/utils";
+import { Ref } from "vue";
+
 
 //计算指定点位得分时，需要统计出现的活三冲四活四数量
 //方法：将ac自动机上的节点的score属性改为枚举类型的棋型属性【0：无棋型，1：电脑方冲二。。。7：玩家方冲二】，
@@ -23,80 +24,94 @@ import { ACAutomaton } from "../common/utils";
 //
 //否则，正常对每个可落子点进行局面计算与排序，过程中如果发现活四以上棋型，直接返回最高评分
 
+//优化方向：（按顺序进行）
+//1.ref响应式数据的get与set耗时过多，先把ai用到的所有ref都改掉
+//2.获取所有可落子点的耗时过多，因为需要遍历整个15*15棋盘，并遍历18个点位，每次执行需要遍历4050个点位
 
 const useAI = (
-    width: number, height: number, boards: Ref<Board[][]>,
-    zobrist: Ref<number>, playRole: Ref<1 | 2>,
+    width: number, height: number,
+    zobrist: { value: number },
+    allCanFall: Map<number, number>,
     curFootNum: Ref<number>,
-    fall: (x: number, y: number, state: 1 | 2) => void,
-    undo: () => void,
+    fall: (myBoards: MyBoard[][], x: number, y: number, state: 1 | 2, isLast: boolean) => void,
+    undo: (myBoards: MyBoard[][], isLast: boolean) => void,
     getStackTop: () => Foot | undefined,
     getStackSecond: () => Foot | undefined,
+    keyToPosition: (key: number) => number[]
 ) => {
-    const zobristHash = new Map<number, Score>()
-    const direction = [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]]
+    const zobristHashBlack = new Map<number, Score>()
+    const zobristHashWhite = new Map<number, Score>()
     const CHESS_TO_SCORE = [0, 10, 100, 100, 1000, 1000, 10000, MAX, -10, -100, -100, -1000, -1000, -10000, MIN]
     const ac = new ACAutomaton(CHESS_TYPE)
-    //ac.buildQuickFail(['0', '1', '2', '_'])
+    let playRole: 1 | 2
+    let myBoards: MyBoard[][] = new Array(height).fill(0).map(() => new Array(width).fill(0).map(() => ({ state: 2 })))
+    ac.buildQuickFail(['0', '1', '2', '_'])
     let score = 0
     const rowScore = new Array<number>(height).fill(0)
     const colScore = new Array<number>(width).fill(0)
     const diagonals = new Array<number>(width + height - 1).fill(0)
     const antiDiagonals = new Array<number>(width + height - 1).fill(0)
-    let cnt = 0
-    let pre = 0
-    let cur = 0
 
     const calculate = (str: string, isAI: boolean) => {
-        cnt++
         let result = 0, chessType = CHESS.NULL
-        ac.query(str, (score: CHESS) => {
+
+        ac.quickQuery(str, (score: CHESS) => {
             result += CHESS_TO_SCORE[score]
             if (isAI && score <= CHESS.MY_FIVE) {
                 chessType = Math.max(chessType, score)
             } else if (!isAI && score >= CHESS.RIVAL_RUSH_TWO) {
+
                 chessType = Math.max(chessType, score - CHESS.MY_FIVE)
             }
         })
         return { result, chessType }
     }
-
+    calculate('_0001020200000_', false)
 
     const getRowScore = (row: number, isAI: boolean = true) => {
         let str = '_'
         for (let i = 0; i < width; i++) {
-            const state = boards.value[row][i].state
-            str += state == playRole.value ? '2' : state == 0 ? '0' : '1'
+            const state = myBoards[row][i].state
+            str += state == playRole ? '2' : state == 0 ? '0' : '1'
         }
         str += '_'
-        return calculate(str, isAI)
+        const result = calculate(str, isAI)
+
+        return result
     }
     const getColScore = (col: number, isAI: boolean = true) => {
+
         let str = '_'
         for (let i = 0; i < height; i++) {
-            const state = boards.value[i][col].state
-            str += state == playRole.value ? '2' : state == 0 ? '0' : '1'
+            const state = myBoards[i][col].state
+            str += state == playRole ? '2' : state == 0 ? '0' : '1'
         }
         str += '_'
-        return calculate(str, isAI)
+        const result = calculate(str, isAI)
+
+        return result
     }
     const getDiaScore = (dia: number, isAI: boolean = true) => { //0~(width+height-1)
         let str = '_'
         for (let i = Math.min(dia, height - 1), j = dia - i; i >= 0 && j < width; i--, j++) {
-            const state = boards.value[i][j].state
-            str += state == playRole.value ? '2' : state == 0 ? '0' : '1'
+            const state = myBoards[i][j].state
+            str += state == playRole ? '2' : state == 0 ? '0' : '1'
         }
         str += '_'
-        return calculate(str, isAI)
+        const result = calculate(str, isAI)
+
+        return result
     }
     const getAntiDiaScore = (antiDia: number, isAI: boolean = true) => { // -width+1 ~ height-1
         let str = '_'
         for (let i = Math.max(antiDia, 0), j = -antiDia + i; i < height && j < width; i++, j++) {
-            const state = boards.value[i][j].state
-            str += state == playRole.value ? '2' : state == 0 ? '0' : '1'
+            const state = myBoards[i][j].state
+            str += state == playRole ? '2' : state == 0 ? '0' : '1'
         }
         str += '_'
-        return calculate(str, isAI)
+        const result = calculate(str, isAI)
+
+        return result
     }
     const getScore = () => {
         score = 0
@@ -120,38 +135,24 @@ const useAI = (
     }
     //返回指定坐标四个方向的得分
     const evaluationPosition = (x: number, y: number, isAI: boolean) => {
-        const [row, col, dia, antiDia] = [getRowScore(x, isAI), getColScore(y, isAI), getDiaScore(x + y, isAI), getAntiDiaScore(x - y, isAI)]
-        return {
+        let row = getRowScore(x, isAI), col = getColScore(y, isAI), dia = getDiaScore(x + y, isAI), antiDia = getAntiDiaScore(x - y, isAI)
+        const result = {
             scores: [row.result, col.result, dia.result, antiDia.result],
             chessType: Math.max(row.chessType, col.chessType, dia.chessType, antiDia.chessType)
         }
+        return result
     }
-
     const getAllCanFall = () => {
         //为了提高决策树最后一层的效率，该方法需要优化，优化方式：用Set存储可落子位置，每次落子后，都将落子位置从Set中删除，并把周围的16个点加入Set中
         let positions = []
-        for (let i = 0; i < height; i++) {
-            for (let j = 0; j < width; j++) {
-                if (boards.value[i][j].state !== 0) continue
-                for (const [dx, dy] of direction) {
-                    let nx = i + dx, ny = j + dy
-                    if (0 <= nx && nx < height && 0 <= ny && ny < width && boards.value[nx][ny].state !== 0) {
-                        positions.push([i, j])
-                        break
-                    }
-                    nx = i + 2 * dx, ny = j + 2 * dy
-                    if (0 <= nx && nx < height && 0 <= ny && ny < width && boards.value[nx][ny].state !== 0) {
-                        positions.push([i, j])
-                        break
-                    }
-                }
-            }
+        for (const key of allCanFall.keys()) {
+            positions.push(keyToPosition(key))
         }
         return positions
     }
     const updateScore = (x: number, y: number) => {
         const tempScores = [rowScore[x], colScore[y], diagonals[x + y], antiDiagonals[x - y + width - 1]]
-        const scores = evaluationPosition(x, y, true).scores
+        const { scores } = evaluationPosition(x, y, true)
         rowScore[x] = scores[0]
         colScore[y] = scores[1]
         diagonals[x + y] = scores[2]
@@ -167,14 +168,25 @@ const useAI = (
         antiDiagonals[x - y + width - 1] = tempScores[3]
     }
     const minimax = (depth: number, alpha: number, beta: number, player: 1 | 2, target: number) => {
-        cnt++
         const isMax = depth % 2 == 0
         if (depth === 0) {
             return { x: -1, y: -1, score }
         }
         const rivalPrePosition = getStackTop(), myPrePosition = getStackSecond()
+        /* let rivalPreEvaResult: { scores: number[], chessType: number }
+        if (rivalPrePosition) {
+            rivalPreEvaResult = evaluationPosition(rivalPrePosition.x, rivalPrePosition.y, !isMax)
+        }
+        let myPreEvaResult: { scores: number[], chessType: number }
+        if (myPrePosition) {
+            myPreEvaResult = evaluationPosition(myPrePosition.x, myPrePosition.y, isMax)
+        }
+        const rivalPreChessType = rivalPrePosition ? rivalPreEvaResult!.chessType : 0
+        const myPreChessType = myPrePosition ? myPreEvaResult!.chessType : 0 */
+
         const rivalPreChessType = rivalPrePosition ? evaluationPosition(rivalPrePosition.x, rivalPrePosition.y, !isMax).chessType : 0
         const myPreChessType = myPrePosition ? evaluationPosition(myPrePosition.x, myPrePosition.y, isMax).chessType : 0
+
         const nextRule = { rules: [{ rivalMaxChessType: CHESS.RIVAL_FIVE, myMinChessType: CHESS.NULL }], returnImmediately: false }   //下一步棋需要满足的条件
         if (myPreChessType >= CHESS.MY_RUSH_FOUR) {  //如果己方有冲四以上，下一步己方要有五连，并在接下来的当前局面判断中立刻返回最佳局面,返回最大值
             nextRule.rules[0].myMinChessType = CHESS.MY_FIVE
@@ -193,20 +205,15 @@ const useAI = (
         }
         //获取可下点位
         let allCanFall = getAllCanFall().map(([x, y]) => ({ x, y, score: 0, retain: false, chessType: 0 }))
-        pre += allCanFall.length
-        if (depth == 6) {
-            console.log(`rivalPreChessType:${rivalPreChessType},myPreChessType:${myPreChessType}`)
-            for (const rule of nextRule.rules) {
-                console.log(`rivalMaxChessType:${rule.rivalMaxChessType},myMinChessType:${rule.myMinChessType}`)
-            }
-        }
 
         //计算当前走一步的得分，并排序，max层按得分高到低，min层按低到高，这样剪枝的可能性会更大
         if (depth > 1) { //如果已经走到最后一步，则不需要计算并排序，因为计算成本过大，大于剪枝的优化
             for (const position of allCanFall) {
-                fall(position.x, position.y, player)
-                const { chessType: myChessType, scores: [row, col, dia, antiDia] } = evaluationPosition(position.x, position.y, isMax)
-                const rivalChessType = evaluationPosition(rivalPrePosition!.x, rivalPrePosition!.y, !isMax).chessType
+                fall(myBoards, position.x, position.y, player, depth == 1)
+                const myResult = evaluationPosition(position.x, position.y, isMax)
+                const rivalResult = evaluationPosition(rivalPrePosition!.x, rivalPrePosition!.y, !isMax)
+                const { chessType: myChessType, scores: [row, col, dia, antiDia] } = myResult
+                const { chessType: rivalChessType } = rivalResult
                 position.chessType = myChessType
 
                 for (const rule of nextRule.rules) {
@@ -219,7 +226,7 @@ const useAI = (
                     - colScore[position.y]
                     - diagonals[position.x + position.y]
                     - antiDiagonals[position.x - position.y + width - 1]
-                undo()
+                undo(myBoards, depth == 1)
             }
 
             allCanFall.sort((a, b) => isMax ? b.score - a.score : a.score - b.score)
@@ -228,16 +235,11 @@ const useAI = (
             allCanFall = allCanFall.filter(position => position.retain)
             bestPositionNow = allCanFall.length > 0 ? allCanFall[0] : bestPositionNow
             const bestNode = { x: bestPositionNow.x, y: bestPositionNow.y, score: 0 } //当前最好节点
-            /* if (curFootNum.value >= 20 && depth >= 5) {
-                console.log(allCanFall)
-            } */
-            if (depth == target) {
-                console.log(allCanFall)
-            }
+
             if (allCanFall.length == 1 && depth == target) { //无需权衡
-                fall(bestNode.x, bestNode.y, player)
+                fall(myBoards, bestNode.x, bestNode.y, player, depth == 1)
                 bestNode.score = score
-                undo()
+                undo(myBoards, depth == 1)
                 return bestNode
             }
             if (allCanFall.length == 0) {  //如果没有可下子，返回最好局面，并返回最小值
@@ -255,33 +257,44 @@ const useAI = (
                     return bestNode
                 }
             }
-            allCanFall = allCanFall.slice(0, 25)
+            let i = 0
+            for (; i < allCanFall.length; i++) {
+                if (isMax) {
+                    if (allCanFall[i].score < 50) {
+                        break
+                    }
+                } else {
+                    if (allCanFall[i].score > -50) {
+                        break
+                    }
+                }
+            }
+            allCanFall = allCanFall.slice(0, Math.min(18, Math.max(5, i)))
         }
-        cur += allCanFall.length
         if (isMax) {
             const maxNode = { x: -1, y: -1, score: MIN - 1, step: '' }
             for (const position of allCanFall) {
-                fall(position.x, position.y, player)
+                fall(myBoards, position.x, position.y, player, depth == 1)
                 const tempScores = updateScore(position.x, position.y)
-                const hashvalue = zobristHash.get(zobrist.value)
+                let hashvalue: Score | undefined
                 let node: MinMaxNode
-                if (hashvalue !== undefined && hashvalue[depth - 1]) {
-                    node = { x: -1, y: -1, score: hashvalue[depth - 1] }
+                if (playRole == 2) {
+                    hashvalue = zobristHashBlack.get(zobrist.value)
+                } else {
+                    hashvalue = zobristHashWhite.get(zobrist.value)
+                }
+                if (hashvalue !== undefined && hashvalue.depth >= depth) {
+                    node = { x: -1, y: -1, score: hashvalue.value }
                 } else {
                     node = minimax(depth - 1, alpha, beta, player == 1 ? 2 : 1, target)
-                    if (hashvalue !== undefined) {
-                        hashvalue[depth - 1] = node.score
+                    if (playRole == 2) {
+                        zobristHashBlack.set(zobrist.value, { value: node.score, depth })
                     } else {
-                        zobristHash.set(zobrist.value, { [depth - 1]: node.score })
+                        zobristHashWhite.set(zobrist.value, { value: node.score, depth })
                     }
-
                 }
                 undoScore(position.x, position.y, tempScores)
-                undo()
-                /* if (depth == 4) {
-                    console.log(node.score, ' ', maxNode.score)
-                    console.log(position.x,position.y)
-                } */
+                undo(myBoards, depth == 1)
 
                 if (node.score > maxNode.score) {
                     maxNode.x = position.x
@@ -297,22 +310,29 @@ const useAI = (
         }
         const minNode = { x: -1, y: -1, score: MAX + 1 }
         for (const position of allCanFall) {
-            fall(position.x, position.y, player)
+            fall(myBoards, position.x, position.y, player, depth == 1)
             const tempScores = updateScore(position.x, position.y)
-            const hashvalue = zobristHash.get(zobrist.value)
+
+            let hashvalue: Score | undefined
             let node: MinMaxNode
-            if (hashvalue !== undefined && hashvalue[depth - 1]) {
-                node = { x: -1, y: -1, score: hashvalue[depth - 1] }
+            if (playRole == 2) {
+                hashvalue = zobristHashBlack.get(zobrist.value)
+            } else {
+                hashvalue = zobristHashWhite.get(zobrist.value)
+            }
+            if (hashvalue !== undefined && hashvalue.depth >= depth) {
+                node = { x: -1, y: -1, score: hashvalue.value }
             } else {
                 node = minimax(depth - 1, alpha, beta, player == 1 ? 2 : 1, target)
-                if (hashvalue !== undefined) {
-                    hashvalue[depth - 1] = node.score
+                if (playRole == 2) {
+                    zobristHashBlack.set(zobrist.value, { value: node.score, depth })
                 } else {
-                    zobristHash.set(zobrist.value, { [depth - 1]: node.score })
+                    zobristHashWhite.set(zobrist.value, { value: node.score, depth })
                 }
             }
+
             undoScore(position.x, position.y, tempScores)
-            undo()
+            undo(myBoards, depth == 1)
             if (node.score < minNode.score) {
                 minNode.x = position.x
                 minNode.y = position.y
@@ -325,34 +345,33 @@ const useAI = (
         }
         return minNode
     }
-    const aiGo = () => {
-        const startTime = performance.now()
+    const deepCopyBoards = (boards: Board[][]) => {
+        for (let i = 0; i < height; i++) {
+            for (let j = 0; j < width; j++) {
+                myBoards[i][j].state = boards[i][j].state
+            }
+        }
+    }
+    const aiGo = (boards: Board[][], p: 1 | 2) => {
+        deepCopyBoards(boards)
+        playRole = p
         getScore()
-        cnt = 0
-        pre = 0
-        cur = 0
-        console.log(score)
         let maxNode: MinMaxNode
-        if (curFootNum.value < 10) {
-            for (let i = 2; i <= 4; i += 2){
-                maxNode = minimax(i, MIN, MAX, playRole.value == 1 ? 2 : 1, i)
+        if (curFootNum.value < 8) {
+            for (let i = 2; i <= 6; i += 2) {
+                maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
                 if (maxNode.score >= 9000) {
                     break
                 }
             }
         } else {
-            for (let i = 2; i <= 6; i += 2){
-                maxNode = minimax(i, MIN, MAX, playRole.value == 1 ? 2 : 1, i)
+            for (let i = 2; i <= 8; i += 2) {
+                maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
                 if (maxNode.score >= 9000) {
                     break
                 }
             }
         }
-        console.log(`pre=${pre},cur=${cur}`)
-        const endTime = performance.now();
-        console.log(endTime - startTime + 'ms')
-        console.log(cnt)
-        console.log(maxNode!.score)
         return [maxNode!.x, maxNode!.y]
     }
 

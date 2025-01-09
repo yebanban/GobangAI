@@ -6,6 +6,9 @@ interface Board {
     y: number,
     highLight: boolean
 }
+interface MyBoard {
+    state: 0 | 1 | 2
+}
 interface Foot {
     x: number,
     y: number,
@@ -17,11 +20,12 @@ interface MinMaxNode {
     score: number,
 }
 interface Score {
-    [key:number]: number,
+    value: number,
+    depth: number
 }
 interface Word {
     str: string,
     score: CHESS
 }
 
-export type { Board, Foot, Score, MinMaxNode, Word }
+export type { Board, MyBoard, Foot, Score, MinMaxNode, Word }

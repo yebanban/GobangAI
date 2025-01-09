@@ -1,5 +1,5 @@
 import { MersenneTwister19937, Random } from "random-js"
-import { ref } from "vue"
+
 import { Board } from "../types/type"
 
 const useZobrist = (boards: Board[][]) => {
@@ -15,7 +15,7 @@ const useZobrist = (boards: Board[][]) => {
             ]
         ))
     )
-    const zobrist = ref(0)
+    const zobrist = { value: 0 }
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             zobrist.value ^= randoms[i][j][0]
@@ -31,6 +31,6 @@ const useZobrist = (boards: Board[][]) => {
     const zobristFall = (x: number, y: number, state: 0 | 1 | 2) => {
         zobrist.value ^= randoms[x][y][state]
     }
-    return { zobrist, zobristFall,zobristReset }
+    return { zobrist, zobristFall, zobristReset }
 }
 export default useZobrist
