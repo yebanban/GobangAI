@@ -6,9 +6,9 @@ import useAI from "./useAI"
 const useGame = (width: number, height: number, role: 1 | 2) => {
     const isOver = ref(false)
     const refRole = ref(role)
-    const { boards, zobrist, allCanFall, fall, boardsReset, undo, getStackTop, getStackSecond, fallMyBoards, undoMyBoards, keyToPosition } = useBoards(width, height, refRole)
+    const { boards, zobrist, allCanFall, fall, boardsReset, undo, getStackByFootNum, fallMyBoards, undoMyBoards, keyToPosition } = useBoards(width, height, refRole)
     const { curRole, curFootNum, roundConversion, roundBack, roundReset } = useRound()
-    const { aiGo } = useAI(width, height, zobrist, allCanFall,curFootNum, fallMyBoards, undoMyBoards, getStackTop, getStackSecond, keyToPosition)
+    const { aiGo } = useAI(width, height, zobrist, allCanFall,curFootNum, fallMyBoards, undoMyBoards, getStackByFootNum, keyToPosition)
     const gameOver = (winer: 1 | 2) => {
         isOver.value = true
         if (winer == refRole.value) {
@@ -37,7 +37,7 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
             return
         }
         if (curFootNum.value == 2) {
-            const position = getStackTop()!
+            const position = getStackByFootNum(1)!
             roleFall(position.x - 1, position.y - 1, refRole.value == 1 ? 2 : 1)
             return
         }

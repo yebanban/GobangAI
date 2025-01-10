@@ -124,13 +124,9 @@ const useBoards = (width: number, height: number, role: { value: 1 | 2 }) => {
         }
 
     }
-
-    const getStackTop = () => {
-        return stack.value.length >= 1 ? stack.value[stack.value.length - 1] : undefined
+    const getStackByFootNum = (footNum: number) => {
+        return stack.value.length >= footNum ? stack.value[stack.value.length - footNum] : undefined
     }
-    const getStackSecond = () => {
-        return stack.value.length >= 2 ? stack.value[stack.value.length - 2] : undefined
-    }
-    return { boards, zobrist, allCanFall, fall, boardsReset, undo, getStackTop, getStackSecond, fallMyBoards, undoMyBoards, keyToPosition }
+    return { boards, zobrist, allCanFall, fall, boardsReset, undo, getStackByFootNum, fallMyBoards, undoMyBoards, keyToPosition }
 }
 export default useBoards

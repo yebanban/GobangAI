@@ -35,8 +35,7 @@ const useAI = (
     curFootNum: Ref<number>,
     fall: (myBoards: MyBoard[][], x: number, y: number, state: 1 | 2, isLast: boolean) => void,
     undo: (myBoards: MyBoard[][], isLast: boolean) => void,
-    getStackTop: () => Foot | undefined,
-    getStackSecond: () => Foot | undefined,
+    getStackByFootNum: (footNum: number) => Foot | undefined,
     keyToPosition: (key: number) => number[]
 ) => {
     const zobristHashBlack = new Map<number, Score>()
@@ -172,55 +171,71 @@ const useAI = (
         if (depth === 0) {
             return { x: -1, y: -1, score }
         }
-        const rivalPrePosition = getStackTop(), myPrePosition = getStackSecond()
-        /* let rivalPreEvaResult: { scores: number[], chessType: number }
-        if (rivalPrePosition) {
-            rivalPreEvaResult = evaluationPosition(rivalPrePosition.x, rivalPrePosition.y, !isMax)
-        }
-        let myPreEvaResult: { scores: number[], chessType: number }
-        if (myPrePosition) {
-            myPreEvaResult = evaluationPosition(myPrePosition.x, myPrePosition.y, isMax)
-        }
-        const rivalPreChessType = rivalPrePosition ? rivalPreEvaResult!.chessType : 0
-        const myPreChessType = myPrePosition ? myPreEvaResult!.chessType : 0 */
+        //考虑自己和对方五步之内最好的棋型
+        let rivalPreBestChessType: number = -1, myPreChessType: number = -1
+        let rivalPreBestPosition: Foot | undefined
 
-        const rivalPreChessType = rivalPrePosition ? evaluationPosition(rivalPrePosition.x, rivalPrePosition.y, !isMax).chessType : 0
-        const myPreChessType = myPrePosition ? evaluationPosition(myPrePosition.x, myPrePosition.y, isMax).chessType : 0
+        for (let i = 1; i <= 5; i++) {
+            let rivalPrePosition = getStackByFootNum(i * 2 - 1)
+            const rivalPreChessType = rivalPrePosition ? evaluationPosition(rivalPrePosition.x, rivalPrePosition.y, !isMax).chessType : 0
+            if (rivalPreChessType > rivalPreBestChessType) {
+                rivalPreBestPosition = rivalPrePosition
+                rivalPreBestChessType = rivalPreChessType
+                if (rivalPreBestChessType >= CHESS.MY_LIVE_THREE) {
+                    break
+                }
+            }
 
+        }
+        for (let i = 1; i <= 5; i++) {
+            let myPrePosition = getStackByFootNum(i * 2)
+            myPreChessType = Math.max(myPreChessType, myPrePosition ? evaluationPosition(myPrePosition.x, myPrePosition.y, isMax).chessType : 0)
+            if (myPreChessType >= CHESS.MY_LIVE_THREE) {
+                break
+            }
+        }
         const nextRule = { rules: [{ rivalMaxChessType: CHESS.RIVAL_FIVE, myMinChessType: CHESS.NULL }], returnImmediately: false }   //下一步棋需要满足的条件
         if (myPreChessType >= CHESS.MY_RUSH_FOUR) {  //如果己方有冲四以上，下一步己方要有五连，并在接下来的当前局面判断中立刻返回最佳局面,返回最大值
             nextRule.rules[0].myMinChessType = CHESS.MY_FIVE
             nextRule.returnImmediately = true
-        } else if (rivalPreChessType >= CHESS.MY_LIVE_FOUR) { //如果对方有活四以上,在接下来的当前局面判断中立刻返回最佳局面，返回最小值
+        } else if (rivalPreBestChessType >= CHESS.MY_LIVE_FOUR) { //如果对方有活四以上,在接下来的当前局面判断中立刻返回最佳局面，返回最小值
             nextRule.returnImmediately = true
-        } else if (rivalPreChessType == CHESS.MY_RUSH_FOUR) { //如果对方有冲四以上，下一步如果对方有活三，自己必须有冲四,否则对方不能有活三
+        } else if (rivalPreBestChessType == CHESS.MY_RUSH_FOUR) { //如果对方有冲四以上，下一步如果对方有活三，自己必须有冲四,否则对方不能有活三
             nextRule.rules[0].rivalMaxChessType = CHESS.MY_RUSH_THREE
             nextRule.rules.push({ rivalMaxChessType: CHESS.MY_LIVE_THREE, myMinChessType: CHESS.MY_RUSH_FOUR })
         } else if (myPreChessType == CHESS.MY_LIVE_THREE) {  //如果己方有活三，在接下来的当前局面判断中立刻返回最佳局面，返回最大值
-
             nextRule.returnImmediately = true
-        } else if (rivalPreChessType == CHESS.MY_LIVE_THREE) { //如果对方有活三，下一步如果对方有活三，自己必须有冲四,否则对方不能有活三
+        } else if (rivalPreBestChessType == CHESS.MY_LIVE_THREE) { //如果对方有活三，下一步如果对方有活三，自己必须有冲四,否则对方不能有活三
             nextRule.rules[0].rivalMaxChessType = CHESS.MY_RUSH_THREE
             nextRule.rules.push({ rivalMaxChessType: CHESS.MY_LIVE_THREE, myMinChessType: CHESS.MY_RUSH_FOUR })
         }
         //获取可下点位
-        let allCanFall = getAllCanFall().map(([x, y]) => ({ x, y, score: 0, retain: false, chessType: 0 }))
+        let allCanFall = getAllCanFall().map(([x, y]) => ({ x, y, score: 0, retain: true, chessType: 0 }))
 
         //计算当前走一步的得分，并排序，max层按得分高到低，min层按低到高，这样剪枝的可能性会更大
         if (depth > 1) { //如果已经走到最后一步，则不需要计算并排序，因为计算成本过大，大于剪枝的优化
             for (const position of allCanFall) {
                 fall(myBoards, position.x, position.y, player, depth == 1)
                 const myResult = evaluationPosition(position.x, position.y, isMax)
-                const rivalResult = evaluationPosition(rivalPrePosition!.x, rivalPrePosition!.y, !isMax)
                 const { chessType: myChessType, scores: [row, col, dia, antiDia] } = myResult
-                const { chessType: rivalChessType } = rivalResult
                 position.chessType = myChessType
 
-                for (const rule of nextRule.rules) {
-                    if (rivalChessType <= rule.rivalMaxChessType && myChessType >= rule.myMinChessType) {
-                        position.retain = true
+                //只有己方或对方之前的棋型大于活三才需要排除法
+                if (rivalPreBestChessType >= CHESS.MY_LIVE_THREE || myPreChessType >= CHESS.MY_LIVE_THREE) {
+                    const rivalResult = evaluationPosition(rivalPreBestPosition!.x, rivalPreBestPosition!.y, !isMax)
+                    const { chessType: rivalChessType } = rivalResult
+                    let flag = false
+                    for (const rule of nextRule.rules) {
+                        if (rivalChessType <= rule.rivalMaxChessType && myChessType >= rule.myMinChessType) {
+                            flag = true
+                        }
                     }
+                    if (!flag) {
+                        position.retain = flag
+                    }
+
                 }
+
                 position.score = row + col + dia + antiDia
                     - rowScore[position.x]
                     - colScore[position.y]
@@ -249,7 +264,7 @@ const useAI = (
                 if (myPreChessType >= CHESS.MY_RUSH_FOUR) { //己方之前有冲四，返回最好局面，返回最大值
                     bestNode.score = isMax ? MAX : MIN
                     return bestNode
-                } else if (rivalPreChessType >= CHESS.MY_LIVE_FOUR) {//对方之前有活四，返回最好局面，返回最小值
+                } else if (rivalPreBestChessType >= CHESS.MY_LIVE_FOUR) {//对方之前有活四，返回最好局面，返回最小值
                     bestNode.score = isMax ? MIN : MAX
                     return bestNode
                 } else {
