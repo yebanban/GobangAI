@@ -1,7 +1,6 @@
 import { Board, Foot, MinMaxNode, MyBoard, Score } from "../types/type";
 import { CHESS, CHESS_TYPE, MAX, MIN } from "../common/constant";
 import { ACAutomaton } from "../common/utils";
-import { Ref } from "vue";
 
 
 //计算指定点位得分时，需要统计出现的活三冲四活四数量
@@ -32,7 +31,6 @@ const useAI = (
     width: number, height: number,
     zobrist: { value: number },
     allCanFall: Map<number, number>,
-    curFootNum: Ref<number>,
     fall: (myBoards: MyBoard[][], x: number, y: number, state: 1 | 2, isLast: boolean) => void,
     undo: (myBoards: MyBoard[][], isLast: boolean) => void,
     getStackByFootNum: (footNum: number) => Foot | undefined,
@@ -166,6 +164,19 @@ const useAI = (
         diagonals[x + y] = tempScores[2]
         antiDiagonals[x - y + width - 1] = tempScores[3]
     }
+    /**
+     * @description: 
+     * @return {*}
+     * @Author: yebanban
+     * @Date: 2025-01-11 22:34:46
+     * @LastEditTime: Do not edit
+     * @LastEditors: yebanban
+     * @param {number} depth
+     * @param {number} alpha
+     * @param {number} beta
+     * @param {1} player
+     * @param {number} target
+     */
     const minimax = (depth: number, alpha: number, beta: number, player: 1 | 2, target: number) => {
         const isMax = depth % 2 == 0
         if (depth === 0) {
@@ -372,21 +383,18 @@ const useAI = (
         playRole = p
         getScore()
         let maxNode: MinMaxNode
-        if (curFootNum.value < 8) {
-            for (let i = 2; i <= 6; i += 2) {
-                maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
-                if (maxNode.score >= 9000) {
-                    break
-                }
-            }
-        } else {
-            for (let i = 2; i <= 8; i += 2) {
-                maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
-                if (maxNode.score >= 9000) {
-                    break
-                }
+        if (p == 1&&zobristHashWhite.size>13777217) {
+            zobristHashWhite.clear()
+        } else if (p == 2 && zobristHashBlack.size > 13777217) {
+            zobristHashBlack.clear()
+        }
+        for (let i = 2; i <= 8; i += 2) {
+            maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
+            if (maxNode.score >= 9000) {
+                break
             }
         }
+
         return [maxNode!.x, maxNode!.y]
     }
 
