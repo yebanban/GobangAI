@@ -378,22 +378,27 @@ const useAI = (
             }
         }
     }
-    const aiGo = (boards: Board[][], p: 1 | 2) => {
+    const aiGo = (boards: Board[][], p: 1 | 2, curFootNum: number) => {
         deepCopyBoards(boards)
         playRole = p
         getScore()
         let maxNode: MinMaxNode
-        if (p == 1&&zobristHashWhite.size>13777217) {
+        if (p == 1 && zobristHashWhite.size > 13777217) {
             zobristHashWhite.clear()
         } else if (p == 2 && zobristHashBlack.size > 13777217) {
             zobristHashBlack.clear()
         }
-        for (let i = 2; i <= 8; i += 2) {
-            maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
-            if (maxNode.score >= 9000) {
-                break
+        if (curFootNum == 2) {
+            maxNode = minimax(6, MIN, MAX, playRole == 1 ? 2 : 1, 6)
+        } else {
+            for (let i = 2; i <= 8; i += 2) {
+                maxNode = minimax(i, MIN, MAX, playRole == 1 ? 2 : 1, i)
+                if (maxNode.score >= 9000) {
+                    break
+                }
             }
         }
+
 
         return [maxNode!.x, maxNode!.y]
     }

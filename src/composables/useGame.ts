@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: yebanban
  * @Date: 2024-11-21 14:59:48
- * @LastEditTime: 2025-01-11 22:33:22
+ * @LastEditTime: 2025-01-15 23:30:21
  * @LastEditors: yebanban
  */
 import { ref } from "vue"
@@ -39,18 +39,14 @@ const useGame = (width: number, height: number, role: 1 | 2) => {
         return true
 
     }
-    
+
     const aiFall = () => {
         if (curFootNum.value == 1) {
             roleFall(7, 7, refRole.value == 1 ? 2 : 1)
             return
         }
-        if (curFootNum.value == 2) {
-            const position = getStackByFootNum(1)!
-            roleFall(position.x - 1, position.y - 1, refRole.value == 1 ? 2 : 1)
-            return
-        }
-        const [x, y] = aiGo(boards.value, refRole.value)
+
+        const [x, y] = aiGo(boards.value, refRole.value, curFootNum.value)
         roleFall(x, y, refRole.value == 1 ? 2 : 1)
     }
     const playerFall = (x: number, y: number) => {
